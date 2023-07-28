@@ -26,6 +26,8 @@ from core.prompt.prompt_builder import PromptBuilder
 from core.prompt.prompt_template import JinjaPromptTemplate
 from core.prompt.prompts import MORE_LIKE_THIS_GENERATE_PROMPT
 from models.model import App, AppModelConfig, Account, Conversation, Message
+from core.callback_handler.main_chain_gather_callback_handler import MainChainGatherCallbackHandler
+from core.lc.SqlChain import SqlChain
 
 
 class Completion:
@@ -68,6 +70,18 @@ class Completion:
             query=query,
             streaming=streaming
         )
+
+        if inputs.get('ds_id'):
+            final_llm = LLMBuilder.to_llm_from_model(
+                tenant_id=app.tenant_id,
+                model=app_model_config.model_dict,
+                streaming=streaming
+            )
+            final_llm.callbacks = cls.get_llm_callbacks(final_llm, streaming, conversation_message_task)
+            chain_callback_handler = MainChainGatherCallbackHandler(conversation_message_task)
+            db_chain = SqlChain(llm=final_llm, ds_id=inputs['ds_id'], callbacks=[DifyStdOutCallbackHandler(), chain_callback_handler])
+            db_chain(query)
+            return
 
         # build main chain include agent
         main_chain = MainChainBuilder.to_langchain_components(
@@ -271,9 +285,9 @@ And answer according to the language of the user's question.
                           conversation_message_task: ConversationMessageTask) -> List[BaseCallbackHandler]:
         llm_callback_handler = LLMCallbackHandler(llm, conversation_message_task)
         if streaming:
-            return [llm_callback_handler, DifyStreamingStdOutCallbackHandler()]
+            return [DifyStreamingStdOutCallbackHandler(), llm_callback_handler]
         else:
-            return [llm_callback_handler, DifyStdOutCallbackHandler()]
+            return [DifyStdOutCallbackHandler(), llm_callback_handler]
 
     @classmethod
     def get_history_messages_from_memory(cls, memory: ReadOnlyConversationTokenDBBufferSharedMemory,

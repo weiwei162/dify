@@ -51,7 +51,7 @@ class ConversationMessageTask:
             task_id=self.task_id,
             message=self.message,
             conversation=self.conversation,
-            chain_pub=False,  # disabled currently
+            chain_pub=True,  # disabled currently
             agent_thought_pub=False  # disabled currently
         )
 
@@ -206,6 +206,8 @@ class ConversationMessageTask:
         message_chain.output = json.dumps(chain_result.completion)
 
         self._pub_handler.pub_chain(message_chain)
+
+        db.session.commit()
 
     def on_agent_end(self, message_chain: MessageChain, agent_model_name: str,
                      agent_loop: AgentLoop):

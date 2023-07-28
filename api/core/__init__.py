@@ -2,6 +2,7 @@ import os
 from typing import Optional
 
 import langchain
+from langchain.cache import InMemoryCache
 from flask import Flask
 from pydantic import BaseModel
 
@@ -26,8 +27,9 @@ hosted_llm_credentials = HostedLLMCredentials()
 
 
 def init_app(app: Flask):
-    if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == 'true':
-        langchain.verbose = True
+    # if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == 'true':
+    #     langchain.verbose = True
+    langchain.llm_cache = InMemoryCache()
 
     if app.config.get("OPENAI_API_KEY"):
         hosted_llm_credentials.openai = HostedOpenAICredential(api_key=app.config.get("OPENAI_API_KEY"))

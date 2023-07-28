@@ -174,7 +174,8 @@ class CompletionService:
         # wait for 5 minutes to close the thread
         cls.countdown_and_close(generate_worker_thread, pubsub, user, generate_task_id)
 
-        return cls.compact_response(pubsub, streaming)
+        final = 'chain' if inputs.get('ds_id') else 'message'
+        return cls.compact_response(pubsub, streaming, final)
 
     @classmethod
     def get_real_user_instead_of_proxy_obj(cls, user: Union[Account, EndUser]):
@@ -374,7 +375,7 @@ class CompletionService:
         return filtered_inputs
 
     @classmethod
-    def compact_response(cls, pubsub: PubSub, streaming: bool = False) -> Union[dict | Generator]:
+    def compact_response(cls, pubsub: PubSub, streaming: bool = False, final: str = 'message') -> Union[dict | Generator]:
         generate_channel = list(pubsub.channels.keys())[0].decode('utf-8')
         if not streaming:
             try:
@@ -385,7 +386,9 @@ class CompletionService:
                         if result.get('error'):
                             cls.handle_error(result)
 
-                        return cls.get_message_response_data(result.get('data'))
+                        event = result.get('event')
+                        if event == final:
+                            return cls.get_message_response_data(result.get('data'))
             except ValueError as e:
                 if e.args[0] != "I/O operation on closed file.":  # ignore this error
                     raise CompletionStoppedError()
@@ -436,7 +439,7 @@ class CompletionService:
             'event': 'message',
             'task_id': data.get('task_id'),
             'id': data.get('message_id'),
-            'answer': data.get('text'),
+            'answer': data.get('text') or data.get('output'),
             'created_at': int(time.time())
         }
 

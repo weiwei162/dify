@@ -32,6 +32,8 @@ class LLMCallbackHandler(BaseCallbackHandler):
             messages: List[List[BaseMessage]],
             **kwargs: Any
     ) -> Any:
+        if self.conversation_message_task.message.message:
+            self.conversation_message_task.init()
         self.start_at = time.perf_counter()
         real_prompts = []
         for message in messages[0]:
