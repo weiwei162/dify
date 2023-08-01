@@ -81,7 +81,7 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
   messages.forEach((item: ChatMessage) => {
     newChatList.push({
       id: `question-${item.id}`,
-      content: item.query,
+      content: item.message.constructor === Array ? item.message[0].text : item.message,
       isAnswer: false,
     })
 
