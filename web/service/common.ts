@@ -3,8 +3,8 @@ import { del, get, patch, post, put } from './base'
 import type {
   AccountIntegrate, CommonResponse, DataSourceNotion,
   IWorkspace, LangGeniusVersionResponse, Member,
-  OauthResponse, Provider, ProviderAnthropicToken, ProviderAzureToken, TenantInfoResponse,
-  UserProfileOriginResponse,
+  OauthResponse, PluginProvider, Provider, ProviderAnthropicToken, ProviderAzureToken,
+  SetupStatusResponse, TenantInfoResponse, UserProfileOriginResponse,
 } from '@/models/common'
 import type {
   UpdateOpenAIKeyResponse,
@@ -17,6 +17,10 @@ export const login: Fetcher<CommonResponse, { url: string; body: Record<string, 
 
 export const setup: Fetcher<CommonResponse, { body: Record<string, any> }> = ({ body }) => {
   return post('/setup', { body }) as Promise<CommonResponse>
+}
+
+export const fetchSetupStatus = () => {
+  return get('/setup') as Promise<SetupStatusResponse>
 }
 
 export const fetchUserProfile: Fetcher<UserProfileOriginResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
@@ -100,6 +104,17 @@ export const syncDataSourceNotion: Fetcher<CommonResponse, { url: string }> = ({
 
 export const updateDataSourceNotionAction: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
   return patch(url) as Promise<CommonResponse>
+}
+
+export const fetchPluginProviders: Fetcher<PluginProvider[] | null, string> = (url) => {
+  return get(url) as Promise<PluginProvider[] | null>
+}
+
+export const validatePluginProviderKey: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: { credentials: any } }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<ValidateOpenAIKeyResponse>
+}
+export const updatePluginProviderAIKey: Fetcher<UpdateOpenAIKeyResponse, { url: string; body: { credentials: any } }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<UpdateOpenAIKeyResponse>
 }
 
 export const invitationCheck: Fetcher<CommonResponse & { is_valid: boolean; workspace_name: string }, { url: string; params: { workspace_id: string; email: string; token: string } }> = ({ url, params }) => {

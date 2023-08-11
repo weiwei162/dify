@@ -6,6 +6,11 @@ export type OauthResponse = {
   redirect_url: string
 }
 
+export type SetupStatusResponse = {
+  step: 'finished' | 'not_started'
+  setup_at?: Date
+}
+
 export type UserProfileResponse = {
   id: string
   name: string
@@ -141,4 +146,12 @@ export type DataSourceNotion = {
 
 export type GithubRepo = {
   stargazers_count: number
+}
+
+export type PluginProvider = {
+  tool_name: string
+  is_enabled: boolean
+  credentials: {
+    api_key: string
+  } | null
 }
