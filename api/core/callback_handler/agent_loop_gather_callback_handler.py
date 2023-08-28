@@ -115,7 +115,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
             thought = action.log.strip()
             completion = json.dumps({'function_call': action.message_log[0].additional_kwargs['function_call']})
         else:
-            action_name_position = action.log.index("Action:") if action.log else -1
+            action_name_position = action.log.find("Action:") if action.log else -1
             thought = action.log[:action_name_position].strip() if action.log else ''
 
         if self._current_loop and self._current_loop.status == 'llm_end':

@@ -33,7 +33,7 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, OpenAIFunctio
             tools=tools,
             callback_manager=callback_manager,
             extra_prompt_messages=extra_prompt_messages,
-            system_message=cls.get_system_message(),
+            system_message=system_message,
             **kwargs,
         )
 

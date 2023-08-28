@@ -47,9 +47,9 @@ class BaseLLM(BaseProviderModel):
             default_callback = DifyStdOutCallbackHandler()
 
         if not callbacks:
-            callbacks = [default_callback]
-        else:
-            callbacks.append(default_callback)
+            callbacks = []
+        # else:
+        #     callbacks.append(default_callback)
 
         self.callbacks = callbacks
 

@@ -46,10 +46,10 @@ class FakeLLM(SimpleChatModel):
     ) -> ChatResult:
         output_str = self._call(messages, stop=stop, run_manager=run_manager, **kwargs)
         if self.streaming:
-            for token in output_str:
-                if run_manager:
-                    run_manager.on_llm_new_token(token)
-                    time.sleep(0.01)
+            # for token in output_str:
+            if run_manager:
+                run_manager.on_llm_new_token(output_str)
+                # time.sleep(0.01)
 
         message = AIMessage(content=output_str)
         generation = ChatGeneration(message=message)

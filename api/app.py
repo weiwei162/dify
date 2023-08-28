@@ -4,9 +4,9 @@ from datetime import datetime
 
 from werkzeug.exceptions import Forbidden
 
-if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
-    from gevent import monkey
-    monkey.patch_all()
+# if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
+from gevent import monkey
+monkey.patch_all()
 
 import logging
 import json

@@ -2,6 +2,7 @@ import enum
 import logging
 from typing import Union, Optional
 
+from langchain.schema import SystemMessage
 from langchain.agents import BaseSingleActionAgent, BaseMultiActionAgent
 from langchain.callbacks.manager import Callbacks
 from langchain.memory.chat_memory import BaseChatMemory
@@ -39,6 +40,7 @@ class AgentConfiguration(BaseModel):
     max_execution_time: Optional[float] = None
     early_stopping_method: str = "generate"
     # `generate` will continue to complete the last inference after reaching the iteration limit or request time limit
+    system_message: Optional[SystemMessage] = None
 
     class Config:
         """Configuration for this pydantic object."""
@@ -74,6 +76,7 @@ class AgentExecutor:
                 llm=self.configuration.model_instance.client,
                 tools=self.configuration.tools,
                 extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,  # used for read chat histories memory
+                system_message=self.configuration.system_message,
                 summary_llm=self.configuration.summary_model_instance.client,
                 verbose=True
             )
@@ -120,11 +123,12 @@ class AgentExecutor:
             max_iterations=self.configuration.max_iterations,
             max_execution_time=self.configuration.max_execution_time,
             early_stopping_method=self.configuration.early_stopping_method,
-            callbacks=self.configuration.callbacks
+            callbacks=self.configuration.callbacks,
+            handle_parsing_errors=True
         )
 
         try:
-            output = agent_executor.run(query)
+            output = agent_executor.run(query, callbacks=self.configuration.callbacks)
         except Exception:
             logging.exception("agent_executor run failed")
             output = None

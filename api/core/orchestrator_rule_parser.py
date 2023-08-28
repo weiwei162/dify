@@ -25,6 +25,8 @@ from libs import helper
 from models.dataset import Dataset, DatasetProcessRule
 from models.model import AppModelConfig
 
+from core.lc.Tools import _get_prompt_and_tools
+
 
 class OrchestratorRuleParser:
     """Parse the orchestrator rule to entities."""
@@ -72,7 +74,7 @@ class OrchestratorRuleParser:
 
             # only OpenAI chat model (include Azure) support function call, use ReACT instead
             if agent_model_instance.model_mode != ModelMode.CHAT \
-                         or agent_model_instance.name not in ['openai', 'azure_openai']:
+                         or agent_model_instance.model_provider.provider_name not in ['openai', 'azure_openai']:
                 if planning_strategy in [PlanningStrategy.FUNCTION_CALL, PlanningStrategy.MULTI_FUNCTION_CALL]:
                     planning_strategy = PlanningStrategy.REACT
                 elif planning_strategy == PlanningStrategy.ROUTER:
@@ -86,12 +88,13 @@ class OrchestratorRuleParser:
                 )
             )
 
-            tools = self.to_tools(
-                tool_configs=tool_configs,
-                conversation_message_task=conversation_message_task,
-                rest_tokens=rest_tokens,
-                callbacks=[agent_callback, DifyStdOutCallbackHandler()]
-            )
+            # tools = self.to_tools(
+            #     tool_configs=tool_configs,
+            #     conversation_message_task=conversation_message_task,
+            #     rest_tokens=rest_tokens,
+            #     callbacks=[agent_callback, DifyStdOutCallbackHandler()]
+            # )
+            prompt, tools = _get_prompt_and_tools(agent_model_instance.client, conversation_message_task, rest_tokens, callbacks=[agent_callback])
 
             if len(tools) == 0:
                 return None
@@ -105,7 +108,8 @@ class OrchestratorRuleParser:
                 callbacks=[chain_callback, agent_callback],
                 max_iterations=10,
                 max_execution_time=400.0,
-                early_stopping_method="generate"
+                early_stopping_method="generate",
+                system_message=prompt
             )
 
             return AgentExecutor(agent_configuration)

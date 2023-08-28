@@ -17,6 +17,17 @@ class MessageListApi(AppApiResource):
         'rating': fields.String
     }
 
+    agent_thought_fields = {
+        'id': fields.String,
+        'chain_id': fields.String,
+        'message_id': fields.String,
+        'position': fields.Integer,
+        'thought': fields.String,
+        'tool': fields.String,
+        'tool_input': fields.String,
+        'created_at': TimestampField
+    }
+
     message_fields = {
         'id': fields.String,
         'conversation_id': fields.String,
@@ -24,7 +35,8 @@ class MessageListApi(AppApiResource):
         'query': fields.String,
         'answer': fields.String,
         'feedback': fields.Nested(feedback_fields, attribute='user_feedback', allow_null=True),
-        'created_at': TimestampField
+        'created_at': TimestampField,
+        'agent_thoughts': fields.List(fields.Nested(agent_thought_fields))
     }
 
     message_infinite_scroll_pagination_fields = {

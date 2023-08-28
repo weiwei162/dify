@@ -2,6 +2,7 @@ import os
 from typing import Optional
 
 import langchain
+from langchain.cache import InMemoryCache
 from flask import Flask
 from pydantic import BaseModel
 
@@ -44,8 +45,10 @@ hosted_model_providers = HostedModelProviders()
 
 
 def init_app(app: Flask):
+    langchain.llm_cache = InMemoryCache()
     if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == 'true':
         langchain.verbose = True
+        langchain.debug = True
 
     if app.config.get("HOSTED_OPENAI_ENABLED"):
         hosted_model_providers.openai = HostedOpenAI(

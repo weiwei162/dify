@@ -93,9 +93,9 @@ class Completion:
         # run agent executor
         agent_execute_result = None
         if agent_executor:
-            should_use_agent = agent_executor.should_use_agent(query)
-            if should_use_agent:
-                agent_execute_result = agent_executor.run(query)
+            # should_use_agent = agent_executor.should_use_agent(query)
+            # if should_use_agent:
+            agent_execute_result = agent_executor.run(query)
 
         # run the final llm
         try:

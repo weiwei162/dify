@@ -53,7 +53,7 @@ class ConversationMessageTask:
             task_id=self.task_id,
             message=self.message,
             conversation=self.conversation,
-            chain_pub=False,  # disabled currently
+            chain_pub=True,  # disabled currently
             agent_thought_pub=True
         )
 
