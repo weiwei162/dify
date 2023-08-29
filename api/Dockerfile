@@ -15,7 +15,8 @@ EXPOSE 5001
 
 WORKDIR /app/api
 
-RUN apt-get update && \
+RUN sed -i s'#http://deb.debian.org#https://mirrors.cloud.tencent.com#' /etc/apt/sources.list.d/debian.sources && \
+    apt-get update && \
     apt-get install -y bash curl wget vim gcc g++ python3-dev libc-dev libffi-dev
 
 COPY requirements.txt /app/api/requirements.txt
