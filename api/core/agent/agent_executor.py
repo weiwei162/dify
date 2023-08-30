@@ -123,7 +123,6 @@ class AgentExecutor:
             max_iterations=self.configuration.max_iterations,
             max_execution_time=self.configuration.max_execution_time,
             early_stopping_method=self.configuration.early_stopping_method,
-            callbacks=self.configuration.callbacks,
             handle_parsing_errors=True
         )
 

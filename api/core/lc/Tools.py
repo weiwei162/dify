@@ -80,7 +80,8 @@ def _get_prompt_and_tools(llm, conversation_message_task, rest_tokens: int, call
         tools = [
             describe_tool,
             query_sql_database_tool,
-            PythonAstREPLTool(name="pandas_tool", locals={"df": df}),
+            PythonAstREPLTool(
+                name="pandas_tool", description="import Pandas and analysis dataframe", locals={"df": df}),
             PlotTool(uri=uri),
         ]
 
