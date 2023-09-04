@@ -46,6 +46,20 @@ annotation_fields = {
     'created_at': TimestampField
 }
 
+agent_thought_fields = {
+    'id': fields.String,
+    'chain_id': fields.String,
+    'message_id': fields.String,
+    'position': fields.Integer,
+    'message': fields.String,
+    'answer': fields.String,
+    'observation': fields.String,
+    'thought': fields.String,
+    'tool': fields.String,
+    'tool_input': fields.String,
+    'created_at': TimestampField
+}
+
 message_detail_fields = {
     'id': fields.String,
     'conversation_id': fields.String,
@@ -61,7 +75,8 @@ message_detail_fields = {
     'from_account_id': fields.String,
     'feedbacks': fields.List(fields.Nested(feedback_fields)),
     'annotation': fields.Nested(annotation_fields, allow_null=True),
-    'created_at': TimestampField
+    'created_at': TimestampField,
+    'agent_thoughts': fields.List(fields.Nested(agent_thought_fields))
 }
 
 
