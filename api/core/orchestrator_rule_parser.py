@@ -68,7 +68,7 @@ class OrchestratorRuleParser:
             )
 
             chain_callback.agent_callback = agent_callback
-            agent_model_instance.add_callbacks([agent_callback])
+            # agent_model_instance.add_callbacks([agent_callback])
 
             planning_strategy = PlanningStrategy(agent_mode_config.get('strategy', 'router'))
 
@@ -94,7 +94,7 @@ class OrchestratorRuleParser:
             #     rest_tokens=rest_tokens,
             #     callbacks=[agent_callback, DifyStdOutCallbackHandler()]
             # )
-            prompt, tools = _get_prompt_and_tools(agent_model_instance.client, conversation_message_task, rest_tokens, callbacks=[agent_callback])
+            prompt, tools = _get_prompt_and_tools(agent_model_instance, conversation_message_task, rest_tokens)
 
             if len(tools) == 0:
                 return None

@@ -1,3 +1,4 @@
+import copy
 import json
 from typing import Type
 from pydantic import BaseModel, Field
@@ -6,9 +7,9 @@ import pandas as pd
 
 from langchain.prompts import PromptTemplate
 from langchain.schema import SystemMessage
-from langchain.callbacks.manager import Callbacks
 from langchain.chains.llm import LLMChain
 from langchain.tools import BaseTool, Tool
+from langchain.tools.base import ToolException
 from langchain.tools.python.tool import PythonAstREPLTool
 
 from langchain import SQLDatabase
@@ -18,13 +19,15 @@ from langchain.tools.sql_database.tool import (
     QuerySQLDataBaseTool,
 )
 
+from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
+
 from core.lc.schema import PlotConfig
 from core.lc.render import draw_plotly
 from core.lc.nc import get_db_uri
 from core.lc.prompt import single_prompt, multi_prompt, desc_prompt_template
 
 
-def _get_prompt_and_tools(llm, conversation_message_task, rest_tokens: int, callbacks: Callbacks = None):
+def _get_prompt_and_tools(model_instance, conversation_message_task, rest_tokens: int):
     try:
         import pandas as pd
 
@@ -72,6 +75,12 @@ def _get_prompt_and_tools(llm, conversation_message_task, rest_tokens: int, call
             tools = [SQLTool(uri=uri)]
             return prompt, tools
 
+        llm_callback = AgentLoopGatherCallbackHandler(
+            model_instant=model_instance,
+            conversation_message_task=conversation_message_task
+        )
+        llm = copy.deepcopy(model_instance.client)
+        llm.callbacks = [llm_callback]
         desc_prompt = PromptTemplate.from_template(desc_prompt_template).partial(
             df_head=str(df.head().to_markdown()), df_describe=str(df.describe().to_markdown()))
         describe_tool = Tool(name="describe_tool", func=LLMChain(llm=llm, prompt=desc_prompt).run,
@@ -126,18 +135,24 @@ class PlotTool(BaseTool):
     args_schema: Type[BaseModel] = PlotConfig
 
     return_direct = True
+    handle_tool_error = True
 
     uri: str
 
     def _run(self, **kwargs):
-        sql = kwargs["sql"]
-        engine = create_engine(self.uri)
-        with engine.connect() as conn:
-            df = pd.read_sql_query(text(sql), conn)
+        try:
+            self.return_direct = True
+            sql = kwargs["sql"]
+            engine = create_engine(self.uri)
+            with engine.connect() as conn:
+                df = pd.read_sql_query(text(sql), conn)
 
-        config = PlotConfig.parse_obj(kwargs)
-        figure = draw_plotly(df, config, False)
-        return "![image]({})".format(figure)
+            config = PlotConfig.parse_obj(kwargs)
+            figure = draw_plotly(df, config, False)
+            return "![image]({})".format(figure)
+        except Exception as e:
+            self.return_direct = False
+            raise ToolException(repr(e))
 
 
 class SQLTool(BaseTool):

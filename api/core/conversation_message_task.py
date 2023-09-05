@@ -196,7 +196,7 @@ class ConversationMessageTask:
     def on_agent_start(self, message_chain: MessageChain, agent_loop: AgentLoop) -> MessageAgentThought:
         message_agent_thought = MessageAgentThought(
             message_id=self.message.id,
-            message_chain_id=message_chain.id,
+            message_chain_id=message_chain.id if message_chain else self.message.id,
             position=agent_loop.position,
             thought=agent_loop.thought,
             tool=agent_loop.tool_name,
@@ -210,7 +210,7 @@ class ConversationMessageTask:
         db.session.add(message_agent_thought)
         db.session.flush()
 
-        self._pub_handler.pub_agent_thought(message_agent_thought)
+        # self._pub_handler.pub_agent_thought(message_agent_thought)
 
         return message_agent_thought
 

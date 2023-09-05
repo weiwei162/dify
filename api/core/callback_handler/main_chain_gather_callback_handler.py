@@ -73,4 +73,12 @@ class MainChainGatherCallbackHandler(BaseCallbackHandler):
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> None:
         logging.exception(error)
-        self.clear_chain_results()
+        if self._current_chain_result and self._current_chain_result.status == 'chain_started':
+            self._current_chain_result.status = 'chain_error'
+            self._current_chain_result.completion = {'error': str(error)}
+            self._current_chain_result.completed = True
+            self._current_chain_result.completed_at = time.perf_counter()
+
+            self.conversation_message_task.on_chain_end(self._current_chain_message, self._current_chain_result)
+
+            self.clear_chain_results()

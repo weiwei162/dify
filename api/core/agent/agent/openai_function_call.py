@@ -1,12 +1,13 @@
+import json
+from json import JSONDecodeError
 from typing import List, Tuple, Any, Union, Sequence, Optional
 
 from langchain.agents import OpenAIFunctionsAgent, BaseSingleActionAgent
-from langchain.agents.openai_functions_agent.base import _parse_ai_message, \
-    _format_intermediate_steps
+from langchain.agents.openai_functions_agent.base import _format_intermediate_steps, _FunctionsAgentAction
 from langchain.callbacks.base import BaseCallbackManager
 from langchain.callbacks.manager import Callbacks
 from langchain.prompts.chat import BaseMessagePromptTemplate
-from langchain.schema import AgentAction, AgentFinish, SystemMessage
+from langchain.schema import AgentAction, AgentFinish, SystemMessage, AIMessage, BaseMessage, OutputParserException
 from langchain.schema.language_model import BaseLanguageModel
 from langchain.tools import BaseTool
 
@@ -111,3 +112,46 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, OpenAIFunctio
             return super().return_stopped_response(early_stopping_method, intermediate_steps, **kwargs)
         except ValueError:
             return AgentFinish({"output": "I'm sorry, I don't know how to respond to that."}, "")
+
+
+def _parse_ai_message(message: BaseMessage) -> Union[AgentAction, AgentFinish]:
+    """Parse an AI message."""
+    if not isinstance(message, AIMessage):
+        raise TypeError(f"Expected an AI message got {type(message)}")
+
+    function_call = message.additional_kwargs.get("function_call", {})
+
+    if function_call:
+        function_name = function_call["name"]
+        try:
+            _tool_input = json.loads(function_call["arguments"])
+        except JSONDecodeError:
+            if function_name == "python":
+                _tool_input = {'__arg1': function_call["arguments"]}
+            else:
+                raise OutputParserException(
+                    f"Could not parse tool input: {function_call} because "
+                    f"the `arguments` is not valid JSON."
+                )
+
+        # HACK HACK HACK:
+        # The code that encodes tool input into Open AI uses a special variable
+        # name called `__arg1` to handle old style tools that do not expose a
+        # schema and expect a single string argument as an input.
+        # We unpack the argument here if it exists.
+        # Open AI does not support passing in a JSON array as an argument.
+        if "__arg1" in _tool_input:
+            tool_input = _tool_input["__arg1"]
+        else:
+            tool_input = _tool_input
+
+        content_msg = "responded: {content}\n" if message.content else "\n"
+
+        return _FunctionsAgentAction(
+            tool=function_name,
+            tool_input=tool_input,
+            log=f"\nInvoking: `{function_name}` with `{tool_input}`\n{content_msg}\n",
+            message_log=[message],
+        )
+
+    return AgentFinish(return_values={"output": message.content}, log=message.content)

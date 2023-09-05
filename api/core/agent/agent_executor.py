@@ -15,7 +15,7 @@ from core.agent.agent.openai_multi_function_call import AutoSummarizingOpenMulti
 from core.agent.agent.output_parser.structured_chat import StructuredChatOutputParser
 from core.agent.agent.structed_multi_dataset_router_agent import StructuredMultiDatasetRouterAgent
 from core.agent.agent.structured_chat import AutoSummarizingStructuredChatAgent
-from langchain.agents import AgentExecutor as LCAgentExecutor
+from core.lc.LCAgentExecutor import LCAgentExecutor
 
 from core.model_providers.models.llm.base import BaseLLM
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
