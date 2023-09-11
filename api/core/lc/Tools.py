@@ -1,6 +1,10 @@
+import ast
+import astor
 import copy
 import json
-from typing import Type
+from contextlib import redirect_stdout
+from io import StringIO
+from typing import Dict, Optional
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, text
 import pandas as pd
@@ -10,7 +14,7 @@ from langchain.schema import SystemMessage
 from langchain.chains.llm import LLMChain
 from langchain.tools import BaseTool, Tool
 from langchain.tools.base import ToolException
-from langchain.tools.python.tool import PythonAstREPLTool
+from langchain.tools.python.tool import PythonAstREPLTool, sanitize_input
 
 from langchain import SQLDatabase
 from langchain.tools.sql_database.tool import (
@@ -21,8 +25,6 @@ from langchain.tools.sql_database.tool import (
 
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
 
-from core.lc.schema import PlotConfig
-from core.lc.render import draw_plotly
 from core.lc.nc import get_db_uri
 from core.lc.prompt import single_prompt, multi_prompt, desc_prompt_template
 
@@ -91,7 +93,8 @@ def _get_prompt_and_tools(model_instance, conversation_message_task, rest_tokens
             query_sql_database_tool,
             PythonAstREPLTool(
                 name="pandas_tool", description="import Pandas and analysis dataframe", locals={"df": df}),
-            PlotTool(uri=uri),
+            PlotTool(
+                name="plot_tool", description="1. Prepare: Preprocessing and cleaning data if necessary; 2. Process: Manipulating data for analysis (grouping, filtering, aggregating, etc.); 3. Analyze: Conducting the actual analysis (if the user asks to create a chart save it to an image and do not show the chart.)", locals={"df": df}),
         ]
 
         return prompt, tools
@@ -129,27 +132,57 @@ class DescribeInput(BaseModel):
 
 
 class PlotTool(BaseTool):
-    name = "generate_chart"
-    description = """
-    Generate the chart with given parameters"""
-    args_schema: Type[BaseModel] = PlotConfig
-
     return_direct = True
     handle_tool_error = True
+    globals: Optional[Dict] = Field(default_factory=dict)
+    locals: Optional[Dict] = Field(default_factory=dict)
+    sanitize_input: bool = True
 
-    uri: str
-
-    def _run(self, **kwargs):
+    def _run(self, query: str, **kwargs):
         try:
-            self.return_direct = True
-            sql = kwargs["sql"]
-            engine = create_engine(self.uri)
-            with engine.connect() as conn:
-                df = pd.read_sql_query(text(sql), conn)
+            if self.sanitize_input:
+                query = sanitize_input(query)
 
-            config = PlotConfig.parse_obj(kwargs)
-            figure = draw_plotly(df, config, False)
-            return "![image]({})".format(figure)
+            plot_func = {"plot", "line", "pie", "bar", "barh",
+                         "hist", "scatter", "area", "box", "kde"}
+            tree = ast.parse(query)
+            new_body = []
+            for node in tree.body:
+                new_body.append(node)
+                if hasattr(node, "value"):
+                    value = node.value
+                    if isinstance(value, ast.Call) and value.func and (isinstance(value.func, ast.Attribute) and value.func.attr in plot_func):
+                        new_body.append(
+                            ast.parse(f"import matplotlib.pyplot as plt"))
+                        new_body.append(ast.parse(f"import io, base64"))
+                        new_body.append(ast.parse(f"buf = io.BytesIO()"))
+                        new_body.append(
+                            ast.parse(f"plt.savefig(buf, format='png')"))
+                        new_body.append(ast.parse(f"buf.seek(0)"))
+                        new_body.append(ast.parse(
+                            f"'![image](data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode('utf-8') + ')'"))
+                        self.return_direct = True
+            new_tree = ast.Module(body=new_body)
+            query = astor.to_source(
+                new_tree, pretty_source=lambda x: "".join(x)).strip()
+
+            tree = ast.parse(query)
+            module = ast.Module(tree.body[:-1], type_ignores=[])
+            exec(ast.unparse(module), self.globals, self.locals)  # type: ignore
+            module_end = ast.Module(tree.body[-1:], type_ignores=[])
+            module_end_str = ast.unparse(module_end)  # type: ignore
+            io_buffer = StringIO()
+            try:
+                with redirect_stdout(io_buffer):
+                    ret = eval(module_end_str, self.globals, self.locals)
+                    if ret is None:
+                        return io_buffer.getvalue()
+                    else:
+                        return ret
+            except Exception:
+                with redirect_stdout(io_buffer):
+                    exec(module_end_str, self.globals, self.locals)
+                return io_buffer.getvalue()
         except Exception as e:
             self.return_direct = False
             raise ToolException(repr(e))

@@ -51,6 +51,8 @@ stripe~=5.5.0
 pandas
 tabulate
 PyMySQL
+matplotlib
+astor
 altair
 plotly
 vegafusion
