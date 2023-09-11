@@ -3,8 +3,10 @@ Use the `describe_tool` function to get summarization information about the tabl
 Create a syntactically correct SQL query for the given question in the {dialect} dialect.
 Use the `query_sql_database_tool` function to execute the query and retrieve the results.
 The data has been read into a pandas dataframe. The name of the dataframe is `df`.
-If more complex analysis is required to answer the question, use the `pandas_tool` function working with pandas dataframe `df`.
-If a graphical presentation is required, use the `plot_tool` function.
+If more complex analysis is required to answer the question, use the `plot_tool` function working with pandas dataframe `df`.
+
+This is the result of `print(df.head())`:
+{df_head}
 
 Follow the provided constraints when creating the SQL query:
 a. Limit the query to at most {top_k} results, unless the user specifies a specific number he wishes to obtain.
@@ -29,7 +31,6 @@ multi_prompt = """You are working with a database table and your task is to prov
 Use the `info_sql_database_tool` function to query the schema of the most relevant tables first.
 Create a syntactically correct SQL query for the given question in the {dialect} dialect.
 Use the `query_sql_database_tool` function to execute the query and retrieve the results.
-If a graphical presentation is required, use the `plot_tool` function.
 
 Follow the provided constraints when creating the SQL query:
 a. Limit the query to at most {top_k} results, unless the user specifies a specific number he wishes to obtain.

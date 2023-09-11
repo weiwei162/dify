@@ -91,8 +91,8 @@ def _get_prompt_and_tools(model_instance, conversation_message_task, rest_tokens
         tools = [
             describe_tool,
             query_sql_database_tool,
-            PythonAstREPLTool(
-                name="pandas_tool", description="import Pandas and analysis dataframe", locals={"df": df}),
+            # PythonAstREPLTool(
+            #     name="pandas_tool", description="import Pandas and analysis dataframe", locals={"df": df}),
             PlotTool(
                 name="plot_tool", description="1. Prepare: Preprocessing and cleaning data if necessary; 2. Process: Manipulating data for analysis (grouping, filtering, aggregating, etc.); 3. Analyze: Conducting the actual analysis (if the user asks to create a chart save it to an image and do not show the chart.)", locals={"df": df}),
         ]
@@ -121,7 +121,6 @@ def _get_prompt_and_tools(model_instance, conversation_message_task, rest_tokens
         tools = [
             info_sql_database_tool,
             query_sql_database_tool,
-            PlotTool(uri=uri),
         ]
 
         return prompt, tools
@@ -132,7 +131,7 @@ class DescribeInput(BaseModel):
 
 
 class PlotTool(BaseTool):
-    return_direct = True
+    # return_direct = True
     handle_tool_error = True
     globals: Optional[Dict] = Field(default_factory=dict)
     locals: Optional[Dict] = Field(default_factory=dict)
