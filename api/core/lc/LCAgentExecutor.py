@@ -1,5 +1,6 @@
 import json
 from typing import Optional, Tuple
+from pandas import DataFrame
 
 from langchain.agents import AgentExecutor
 from langchain.schema import (
@@ -23,7 +24,9 @@ class LCAgentExecutor(AgentExecutor):
                     "",
                 )
 
-        if not isinstance(observation, str):
+        if isinstance(observation, DataFrame):
+            content = str(observation.to_markdown())
+        elif not isinstance(observation, str):
             try:
                 content = json.dumps(observation, ensure_ascii=False)
             except Exception:

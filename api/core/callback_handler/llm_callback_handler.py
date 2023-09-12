@@ -66,7 +66,7 @@ class LLMCallbackHandler(BaseCallbackHandler):
         end_at = time.perf_counter()
         self.llm_message.latency = end_at - self.start_at
 
-        if not self.conversation_message_task.streaming:
+        if not self.conversation_message_task.streaming or response.llm_output is None:
             self.conversation_message_task.append_message_text(response.generations[0][0].text)
             self.llm_message.completion = response.generations[0][0].text
 
