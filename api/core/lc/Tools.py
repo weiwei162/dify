@@ -83,9 +83,10 @@ def _get_prompt_and_tools(model_instance, conversation_message_task, rest_tokens
         )
         llm = copy.deepcopy(model_instance.client)
         llm.callbacks = [llm_callback]
+        prefix = desc_prompt_template.format(df_head=str(
+            df.head().to_markdown()), df_describe=str(df.describe().to_markdown()))
         desc_prompt = ChatPromptTemplate.from_messages([
-            ("system", desc_prompt_template.format(df_head=str(
-                df.head().to_markdown()), df_describe=str(df.describe().to_markdown()))),
+            SystemMessage(content=prefix),
             ("human", "{question}"),
         ])
         describe_tool = Tool(name="describe_tool", func=LLMChain(llm=llm, prompt=desc_prompt).run,
