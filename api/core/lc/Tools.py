@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, text
 import pandas as pd
 
-from langchain.prompts import PromptTemplate
+from langchain.prompts import ChatPromptTemplate
 from langchain.schema import SystemMessage
 from langchain.chains.llm import LLMChain
 from langchain.tools import BaseTool, Tool
@@ -83,18 +83,20 @@ def _get_prompt_and_tools(model_instance, conversation_message_task, rest_tokens
         )
         llm = copy.deepcopy(model_instance.client)
         llm.callbacks = [llm_callback]
-        desc_prompt = PromptTemplate.from_template(desc_prompt_template).partial(
-            df_head=str(df.head().to_markdown()), df_describe=str(df.describe().to_markdown()))
+        desc_prompt = ChatPromptTemplate.from_messages([
+            ("system", desc_prompt_template.format(df_head=str(
+                df.head().to_markdown()), df_describe=str(df.describe().to_markdown()))),
+            ("human", "{question}"),
+        ])
         describe_tool = Tool(name="describe_tool", func=LLMChain(llm=llm, prompt=desc_prompt).run,
-                             description="useful for when you need to describe basic info of data", args_schema=DescribeInput, return_direct=True)
+                             description="useful for when you need to describe basic info of data. Input should be the human's original question.", args_schema=DescribeInput, return_direct=True)
 
         tools = [
             describe_tool,
             query_sql_database_tool,
             # PythonAstREPLTool(
             #     name="pandas_tool", description="import Pandas and analysis dataframe", locals={"df": df}),
-            PlotTool(
-                name="plot_tool", description="1. Prepare: Preprocessing and cleaning data if necessary; 2. Process: Manipulating data for analysis (grouping, filtering, aggregating, etc.); 3. Analyze: Conducting the actual analysis (if the user asks to create a chart save it to an image and do not show the chart.)", locals={"df": df}),
+            PandasTool(locals={"df": df}),
         ]
 
         return prompt, tools
@@ -130,7 +132,15 @@ class DescribeInput(BaseModel):
     question: str = Field(description="targeted question")
 
 
-class PlotTool(BaseTool):
+class PandasTool(BaseTool):
+    name = "pandas_tool"
+    description = (
+        "Use this to import Pandas and analysis dataframe. "
+        "Input should be a valid python command. "
+        "1. Prepare: Preprocessing and cleaning data if necessary "
+        "2. Process: Manipulating data for analysis (grouping, filtering, aggregating, etc.) "
+        "3. Analyze: Conducting the actual analysis (if the user asks to create a chart save it to an image and do not show the chart.)"
+    )
     # return_direct = True
     handle_tool_error = True
     globals: Optional[Dict] = Field(default_factory=dict)
@@ -143,7 +153,7 @@ class PlotTool(BaseTool):
                 query = sanitize_input(query)
 
             plot_func = {"plot", "line", "pie", "bar", "barh",
-                         "hist", "scatter", "area", "box", "kde"}
+                         "hist", "scatter", "area", "box", "kde", "show"}
             tree = ast.parse(query)
             new_body = []
             for node in tree.body:

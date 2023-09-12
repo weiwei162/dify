@@ -3,7 +3,7 @@ Use the `describe_tool` function to get summarization information about the tabl
 Create a syntactically correct SQL query for the given question in the {dialect} dialect.
 Use the `query_sql_database_tool` function to execute the query and retrieve the results.
 The data has been read into a pandas dataframe. The name of the dataframe is `df`.
-If more complex analysis is required to answer the question, use the `plot_tool` function working with pandas dataframe `df`.
+If more complex analysis is required to answer the question, use the `pandas_tool` function working with pandas dataframe `df`.
 
 This is the result of `print(df.head())`:
 {df_head}
@@ -51,12 +51,10 @@ Let's proceed systematically by breaking down the problem and outputting the ans
 Only use the functions you have been provided with."""
 
 
-desc_prompt_template = """You are working with a pandas dataframe. The name of the dataframe is `df`.
-Based on below dataframe info and input question, write a natural language response in Chinese:
+desc_prompt_template = """You are working with a pandas dataframe and your task is to provide answers to questions in Chinese.
+The name of the dataframe is `df`.
 This is the result of `print(df.head())`:
 {df_head}
 
 This is the result of `print(df.describe())`:
-{df_describe}
-
-Question: {question}"""
+{df_describe}"""
