@@ -190,6 +190,7 @@ class PandasTool(BaseTool):
                     else:
                         return ret
             except Exception:
+                self.return_direct = False
                 with redirect_stdout(io_buffer):
                     exec(module_end_str, self.globals, self.locals)
                 return io_buffer.getvalue()
