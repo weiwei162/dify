@@ -138,6 +138,7 @@ class PandasTool(BaseTool):
     description = (
         "Use this to import Pandas and analysis dataframe. "
         "Input should be a valid python command. "
+        "Double-check your command before executing it and rewrite if necessary. "
         "1. Prepare: Preprocessing and cleaning data if necessary "
         "2. Process: Manipulating data for analysis (grouping, filtering, aggregating, etc.) "
         "3. Analyze: Conducting the actual analysis (if the user asks to create a chart save it to an image and do not show the chart.)"
@@ -153,28 +154,32 @@ class PandasTool(BaseTool):
             if self.sanitize_input:
                 query = sanitize_input(query)
 
-            plot_func = {"plot", "line", "pie", "bar", "barh",
-                         "hist", "scatter", "area", "box", "kde", "show"}
-            tree = ast.parse(query)
-            new_body = []
-            for node in tree.body:
-                new_body.append(node)
-                if hasattr(node, "value"):
-                    value = node.value
-                    if isinstance(value, ast.Call) and value.func and (isinstance(value.func, ast.Attribute) and value.func.attr in plot_func):
-                        new_body.append(
-                            ast.parse(f"import matplotlib.pyplot as plt"))
-                        new_body.append(ast.parse(f"import io, base64"))
-                        new_body.append(ast.parse(f"buf = io.BytesIO()"))
-                        new_body.append(
-                            ast.parse(f"plt.savefig(buf, format='png')"))
-                        new_body.append(ast.parse(f"buf.seek(0)"))
-                        new_body.append(ast.parse(
-                            f"'![image](data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode('utf-8') + ')'"))
-                        self.return_direct = True
-            new_tree = ast.Module(body=new_body)
-            query = astor.to_source(
-                new_tree, pretty_source=lambda x: "".join(x)).strip()
+            code = """import io, base64
+buf = io.BytesIO()
+plt.savefig(buf, format='png')
+plt.close('all')
+buf.seek(0)
+'![image](data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode('utf-8') + ')'"""
+
+            if "plt.show()" in query:
+                query = query.replace("plt.show()", code)
+            else:
+                plot_func = {"plot", "line", "pie", "bar", "barh",
+                             "hist", "scatter", "area", "box", "kde", "boxplot"}
+                tree = ast.parse(query)
+                new_body = []
+                for node in tree.body:
+                    new_body.append(node)
+                    if hasattr(node, "value"):
+                        value = node.value
+                        if isinstance(value, ast.Call) and value.func and (isinstance(value.func, ast.Attribute) and value.func.attr in plot_func):
+                            new_body.append(
+                                ast.parse(f"import matplotlib.pyplot as plt"))
+                            new_body.append(ast.parse(code))
+                            self.return_direct = True
+                new_tree = ast.Module(body=new_body)
+                query = astor.to_source(
+                    new_tree, pretty_source=lambda x: "".join(x)).strip()
 
             tree = ast.parse(query)
             module = ast.Module(tree.body[:-1], type_ignores=[])
