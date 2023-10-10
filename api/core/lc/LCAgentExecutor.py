@@ -33,7 +33,9 @@ class LCAgentExecutor(AgentExecutor):
                 content = str(observation)
         else:
             content = observation
-        if len(content) > 2000:
+        if len(content) > 5000:
+            return AgentFinish({self.agent.return_values[0]: "返回的数据过多，请修改问题重新提问"}, "",)
+        elif len(content) > 2000:
             return AgentFinish({self.agent.return_values[0]: content}, "",)
 
         return None

@@ -2,9 +2,10 @@ import os
 from typing import Optional
 
 import langchain
-from langchain.cache import InMemoryCache
+from langchain.cache import SQLAlchemyCache
 from flask import Flask
 from pydantic import BaseModel
+from sqlalchemy import create_engine
 
 
 class HostedOpenAI(BaseModel):
@@ -45,7 +46,8 @@ hosted_model_providers = HostedModelProviders()
 
 
 def init_app(app: Flask):
-    langchain.llm_cache = InMemoryCache()
+    engine = create_engine(app.config.get('SQLALCHEMY_DATABASE_URI'))
+    langchain.llm_cache = SQLAlchemyCache(engine)
     if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == 'true':
         langchain.verbose = True
         langchain.debug = True

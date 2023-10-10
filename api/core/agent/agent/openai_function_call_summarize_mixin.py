@@ -1,7 +1,7 @@
 from typing import cast, List
 
 from langchain.chat_models import ChatOpenAI
-from langchain.chat_models.openai import _convert_message_to_dict
+# from langchain.chat_models.openai import _convert_message_to_dict
 from langchain.memory.summary import SummarizerMixin
 from langchain.schema import SystemMessage, HumanMessage, BaseMessage, AIMessage
 from langchain.schema.language_model import BaseLanguageModel

@@ -55,8 +55,8 @@ class OrchestratorRuleParser:
                 model_provider_name=agent_provider_name,
                 model_name=agent_model_name,
                 model_kwargs=ModelKwargs(
-                    temperature=0.2,
-                    top_p=0.3,
+                    temperature=0,
+                    top_p=0.75,
                     max_tokens=1500
                 )
             )

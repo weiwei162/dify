@@ -1,7 +1,8 @@
 import ast
-import astor
 import copy
 import json
+import os
+from minio import Minio
 from contextlib import redirect_stdout
 from io import StringIO
 from typing import Dict, Optional
@@ -16,7 +17,7 @@ from langchain.tools import BaseTool, Tool
 from langchain.tools.base import ToolException
 from langchain.tools.python.tool import PythonAstREPLTool, sanitize_input
 
-from langchain import SQLDatabase
+from langchain.utilities import SQLDatabase
 from langchain.tools.sql_database.tool import (
     InfoSQLDatabaseTool,
     QuerySQLCheckerTool,
@@ -70,7 +71,7 @@ def _get_prompt_and_tools(model_instance, conversation_message_task, rest_tokens
                 text(f"SELECT * FROM {_table_names[0]}"), conn)
 
         prefix = single_prompt.format(
-            dialect=db.dialect, top_k=10, table_info=table_info, df_head=str(df.head().to_markdown()))
+            dialect=db.dialect, top_k=10, table_info=table_info, df_head=str(df.head().to_markdown()), df_describe=str(df.describe().to_markdown()))
         prompt = SystemMessage(content=prefix)
 
         if not conversation_message_task.streaming:
@@ -92,12 +93,13 @@ def _get_prompt_and_tools(model_instance, conversation_message_task, rest_tokens
         describe_tool = Tool(name="describe_tool", func=LLMChain(llm=llm, prompt=desc_prompt).run,
                              description="useful for when you need to describe basic info of data. Input should be the human's original question.", args_schema=DescribeInput, return_direct=True)
 
+        mc = Minio('minio:9000', access_key=os.environ['MINIO_ACCESS_KEY'], secret_key=os.environ['MINIO_SECRET_KEY'], secure=False)
         tools = [
-            describe_tool,
-            query_sql_database_tool,
+            # describe_tool,
+            # query_sql_database_tool,
             # PythonAstREPLTool(
             #     name="pandas_tool", description="import Pandas and analysis dataframe", locals={"df": df}),
-            PandasTool(locals={"df": df}),
+            PandasTool(locals={"df": df, "mc": mc}),
         ]
 
         return prompt, tools
@@ -138,10 +140,7 @@ class PandasTool(BaseTool):
     description = (
         "Use this to import Pandas and analysis dataframe. "
         "Input should be a valid python command. "
-        "Double-check your command before executing it and rewrite if necessary. "
-        "1. Prepare: Preprocessing and cleaning data if necessary "
-        "2. Process: Manipulating data for analysis (grouping, filtering, aggregating, etc.) "
-        "3. Analyze: Conducting the actual analysis (if the user asks to create a chart save it to an image and do not show the chart.)"
+        "Double-check your command before executing it and rewrite if necessary."
     )
     # return_direct = True
     handle_tool_error = True
@@ -154,32 +153,33 @@ class PandasTool(BaseTool):
             if self.sanitize_input:
                 query = sanitize_input(query)
 
-            code = """import io, base64
-buf = io.BytesIO()
-plt.savefig(buf, format='png')
+            code = """
+import matplotlib.pyplot as plt
+import os, uuid
+file_uuid = str(uuid.uuid4())
+path = '/tmp/' + file_uuid + '.png'
+plt.savefig(path, format='png')
 plt.close('all')
-buf.seek(0)
-'![image](data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode('utf-8') + ')'"""
+mc.fput_object('gpt', file_uuid, path)
+os.remove(path)
+'![image](' + os.environ['MINIO_URL'] + file_uuid + ')'"""
 
             if "plt.show()" in query:
                 query = query.replace("plt.show()", code)
+                self.return_direct = True
             else:
                 plot_func = {"plot", "line", "pie", "bar", "barh",
                              "hist", "scatter", "area", "box", "kde", "boxplot"}
+                is_plot = False
                 tree = ast.parse(query)
-                new_body = []
                 for node in tree.body:
-                    new_body.append(node)
                     if hasattr(node, "value"):
                         value = node.value
                         if isinstance(value, ast.Call) and value.func and (isinstance(value.func, ast.Attribute) and value.func.attr in plot_func):
-                            new_body.append(
-                                ast.parse(f"import matplotlib.pyplot as plt"))
-                            new_body.append(ast.parse(code))
-                            self.return_direct = True
-                new_tree = ast.Module(body=new_body)
-                query = astor.to_source(
-                    new_tree, pretty_source=lambda x: "".join(x)).strip()
+                            is_plot = True
+                if is_plot:
+                    query = query + code
+                    self.return_direct = True
 
             tree = ast.parse(query)
             module = ast.Module(tree.body[:-1], type_ignores=[])
